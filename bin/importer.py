@@ -11,10 +11,10 @@ def read_directory(a_directory):
         if n_item.is_dir():
             yield from read_directory(n_item.path)
         elif n_item.is_file():
-            file_mime_reader = Magic()
-            mime_type = file_mime_reader.from_file(n_item, mime=True)
+            file_mime_reader = Magic(mime=True)
+            mime_type = file_mime_reader.from_file(n_item.path)
             if mime_type == "application/pdf":
-                yield n_item
+                yield n_item.path
 
 def main():
     try:
@@ -23,14 +23,13 @@ def main():
         args = parser.parse_args()
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
-        for n in a_generator:
-            parsed = Parser(n_file)
+        for n_file in a_generator:
+            parsed = Parser(n_file, ['author', 'subject', 'title', 'creationDate'])
             total_files += 1
-            print(n)
+            info = parsed.get_metadata()
         return 0
     except KeyboardInterrupt:
         return 131
-
 
 if __name__ == "__main__":
     _exit(main())
