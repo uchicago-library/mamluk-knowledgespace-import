@@ -3,6 +3,7 @@ from os.path import exists
 from os import _exit, scandir
 from magic import Magic
 from PyPDF2 import PdfFileReader
+import re
 
 class Parser(object):
     def __init__(self, filename, fields_to_extract):
@@ -14,24 +15,21 @@ class Parser(object):
             raise IOError("{} does not exist!".format(filename))
 
     def extract_a_metadata_field(self, field_name):
-        field_name = field_name.lower()
+        field_name = field_name
         field_name = "/" + field_name[0].upper() + field_name[1:]
         if self.metadata.get(field_name, None):
             return self.metadata[field_name]
         else:
             return None
 
-    def extract_core_metadata(self):
-        output = {}
-        for n_field in core_fields:
-            field_value = self.metadata.get(n_field, None)
-            if field_value != None:
-                output[n_field.replace('/').lower()] = field_value
-        return output
-
     def get_metadata(self):
         output = {}
         for n_field in self.fields:
-            value = self.extract_a_metadata_field(n_field)
+            if n_field == 'creationDate':
+                value = self.extract_a_metadata_field(n_field).split('-')[0][2:]
+                matchable = re.compile('^(\d{4})(\d{2})(\d{2})').search(value)
+                value = matchable.group(1) + '-' + matchable.group(2) + '-' + matchable.group(1)
+            else:
+                value = self.extract_a_metadata_field(n_field)
             output[n_field] = value
         return output
