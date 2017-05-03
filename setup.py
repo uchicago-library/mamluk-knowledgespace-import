@@ -1,11 +1,12 @@
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(name='mamluk-knowledgespace',
+setup(name='mamlukimport',
       version='0.1',
       description='A tool to parse the PDFs from the Mamluk Studies Journal for metadata and generate SAF imports for knowledgespace',
       author='Tyler Danstrom',
       author_email='tdanstrom@uchicago.edu',
       url='https://github.com/uchicago-library/mamluk-knowledgespace-import/',
-      packages=['knowledgespace-import'],
+      packages=['mamlukimport'],
+      install_requires=['python-magic', 'PyPDF2']
      )
