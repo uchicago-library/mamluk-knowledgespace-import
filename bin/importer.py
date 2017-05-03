@@ -20,13 +20,19 @@ def main():
     try:
         parser = ArgumentParser(description="Process a directory of PDFs for the metadata in each PDF")
         parser.add_argument("pdf_directory", help="A directory that contains a bunch of PDF files.")
+        parser.add_argument("output_file", help="A file to write the results of the metadata extration")
         args = parser.parse_args()
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
+        with open(args.output_file, "w") as write_file:
+            write_file.write("title,author,creationDate,subject,filePath\n")
         for n_file in a_generator:
             parsed = Parser(n_file, ['author', 'subject', 'title', 'creationDate'])
             total_files += 1
             info = parsed.get_metadata()
+            with open(args.output_file, "a", encoding='utf-8') as write_file:
+                write_file.write("{}, {}, {}, {}, {}\n".format(info["title"], info["author"], info["creationDate"], info["subject"], n_file))
+
         return 0
     except KeyboardInterrupt:
         return 131
