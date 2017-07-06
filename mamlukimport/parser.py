@@ -11,6 +11,7 @@ class Parser(object):
             self.fields = fields_to_extract
             self.file_object = PdfFileReader(open(filename, "rb"), strict=False)
             self.metadata = dict(self.file_object.getDocumentInfo())
+            print(self.file_object.getDocumentInfo())
         else:
             raise IOError("{} does not exist!".format(filename))
 
