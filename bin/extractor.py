@@ -28,11 +28,11 @@ def main():
         total_files = 0
 
         with open(args.output_file, "w", encoding="utf-8") as csv_file:
-            csvfieldnames = ["title", "author", "creationDate", "subject",  "filePath"]
+            csvfieldnames = ["title", "author", "creationDate", "subject", "keywords", "filePath"]
             writer = csv.DictWriter(csv_file, fieldnames=csvfieldnames)
             writer.writeheader()
             for n_file in a_generator:
-                parsed = Parser(n_file, ['author', 'subject', 'title', 'creationDate'])
+                parsed = Parser(n_file, ['author', 'subject', 'keywords', 'title', 'creationDate'])
                 total_files += 1
                 info = parsed.get_metadata()
                 info["filePath"] = basename(n_file)
