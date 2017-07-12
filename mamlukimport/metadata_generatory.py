@@ -1,6 +1,18 @@
 
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 
+"""
+date:.accessioned -> the date file added to the IR
+date.copyright -> year of each issue
+publisher -> "University of Chicago" or "University of Chicago Library"
+identifier -> DOI
+relation.isFormatOf -> should refer to full printed volume somehw
+relation.isPartOf -> used in individual articles and should reference the volume and issue that this from
+rights -> copyright statement in each file
+rights.url -> MSR rights URL
+rights.rightsStatement -> duplication of rights
+source -> should refer to this being digital version of old printed version
+"""
 
 class Generator(object):
     def __init__(self, data, fields):
