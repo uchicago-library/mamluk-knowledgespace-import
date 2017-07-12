@@ -12,6 +12,17 @@ rights -> copyright statement in each file
 rights.url -> MSR rights URL
 rights.rightsStatement -> duplication of rights
 source -> should refer to this being digital version of old printed version
+
+creator
+title
+publisher
+date.copyright
+relation.isFormatOf OR relation.isPartOf
+rights.url
+rights.rightsStatement
+source
+type
+
 """
 
 class Generator(object):
@@ -21,33 +32,47 @@ class Generator(object):
 
     def generate_metadata(self):
         root = Element("dublin_core")
-        author_el = SubElement(root, 'dcvalue')
-        author_el.set("element", "contributor")
-        author_el.set("qualifier", "author")
-        author_el.text = self.author
+        authors = self.data["author"].split(';')
+        for n in authors:
+            new_au_el = SubElement(root, 'dcvalue')
+            new_au_el.set("element", "contributor")
+            new_au_el.set("qualifier", "author")
 
-        date_el = SubElemet(root, "dcvalue")
-        date_el.set("element", "date")
-        date_el.set("qualifier", "issued")
-        date_el.text = self.creationDate
-
-        title_el = SubElement(root, "dcvalue")
+        title_el = SubElement(root, 'dcvalue')
         title_el.set("element", "title")
-        title_el.set("qualifier", "none")
-        title_el.text = self.title
+        title_el.set("qaulifier", "none")
 
         mimetype_el = SubElement(root, "dcvalue")
         mimetype_el.set("element", "format")
         mimetype_el.set("qualifier", "mimetype")
         mimetype_el.text = "application/pdf"
 
-        for n_keyw in self.keywords.split(';'):
-            subj_el = SubElement(root, "dcvalue")
-            subj_el.set("element", "subject")
-            subj_el.set("qualifier", "none")
-            subj_el.text = n_keyw
+        mimetype_el = SubElement(root, "dcvalue")
+        mimetype_el.set("element", "date")
+        mimetype_el.set("qualifier", "copyright")
 
-        subj_el = SubElement(root, "dcvalue")
-        subj_el.set("element", "subject")
-        subj_el.set("qualifier", "none")
-        subj_el.text = self.subject
+        rights_url_el = SubElement(root, "dcvalue")
+        rights_url_el.set("element", "rights")
+        rights_url_el.set("qualifier", "url")
+
+        source_el = SubElement(root, "dcvalue")
+        source_el.set("element", "source")
+        source_el.set("qualifier", "none")
+
+        rights_state_el = SubElement(root, "dcvalue")
+        rights_state_el.set("element", "rights")
+        rights_state_el.set("qualifier", "rightsStatement")
+
+        if self.type == 'article':
+            is_part_of = SubElement(root, "dcvalue")
+            rights_state_el.set("element", "relation")
+            rights_state_el.set("qualifier", "isPartOf")
+
+        if self.type == 'volume':
+            is_format_of = SubElement(root, "dcvalue")
+            is_format_of.set("element", "relation")
+            is_format_of.set("qualifier", "isFormatOf")
+
+        source = SubElement(root, "dcvalue")
+        source.set("element", "source")
+        source.set("qualifier", "none")
