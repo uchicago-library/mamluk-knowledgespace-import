@@ -1,6 +1,7 @@
 
 
 from argparse import ArgumentParser
+from collections import namedtuple
 import re
 import csv
 import json
@@ -9,9 +10,11 @@ from os.path import basename
 from os import _exit, scandir
 
 from mamlukimport.parser import Parser
+from mamlukimport.mapper import Mapper
 
 def read_directory(a_directory):
     items = scandir(a_directory)
+
     for n_item in items:
         if n_item.is_dir():
             yield from read_directory(n_item.path)
@@ -28,9 +31,11 @@ def main():
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
         rows = []
+        outputs = []
         for n in a_generator:
             try:
                 data = json.load(open(n, encoding='utf-8'))[0]
+                output = namedtuple("data", "creator title rights keywords subject createdate filename")
                 creator = data["Creator"] if not isinstance(data["Creator"], list) else ', '.join(data["Creator"])
                 title = data["Title"]
                 rights = data["Rights"]
@@ -41,6 +46,7 @@ def main():
                 filename = data["FileName"]
                 volume = filename.split('_')[2]
                 temp = volume.split('-')
+
                 if len(temp) == 2:
                     if '.pdf' in temp[1]:
                         volume = temp[0]
@@ -51,6 +57,14 @@ def main():
                     webstatement = data["WebStatement"]
                 except KeyError:
                     webstatement = ""
+                output.creator = creator
+                output.title = title
+                output.rights = rights
+                output.keywords = keywords
+                output.subject = subject
+                output.createdate = createdate
+                output.filename = filename
+                outputs.append(output)
                 row = [filename, creator, title, re.sub(r'\n', ' ', rights), webstatement, subject, keywords, createdate, publisher]
                 rows.append(row)
             except JSONDecodeError:
@@ -62,7 +76,8 @@ def main():
             for n_row in rows:
                 total_files += 1
                 writer.writerow(n_row)
-        print(total_files)
+        for n_record in outputs:
+            new_mapper = Mapper(n_record)
         return 0
     except KeyboardInterrupt:
         return 131
