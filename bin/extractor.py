@@ -1,7 +1,10 @@
 
+
 from argparse import ArgumentParser
+import re
 import csv
-from magic import Magic
+import json
+from json.decoder import JSONDecodeError
 from os.path import basename
 from os import _exit, scandir
 
@@ -13,9 +16,7 @@ def read_directory(a_directory):
         if n_item.is_dir():
             yield from read_directory(n_item.path)
         elif n_item.is_file():
-            file_mime_reader = Magic(mime=True)
-            mime_type = file_mime_reader.from_file(n_item.path)
-            if mime_type == "application/pdf":
+            if '.json' in n_item.path:
                 yield n_item.path
 
 def main():
@@ -26,17 +27,42 @@ def main():
         args = parser.parse_args()
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
-
+        rows = []
+        for n in a_generator:
+            try:
+                data = json.load(open(n, encoding='utf-8'))[0]
+                creator = data["Creator"] if not isinstance(data["Creator"], list) else ', '.join(data["Creator"])
+                title = data["Title"]
+                rights = data["Rights"]
+                print(rights.split(' ')[0])
+                keywords = data["Keywords"] if not isinstance(data["Keywords"], list) else ', '.join([re.sub(';', '', x) for x in data["Keywords"]])
+                subject = data["Subject"] if not isinstance(data["Subject"], list) else ', '.join([re.sub(';', '', x) for x in data["Subject"]])
+                createdate = data["CreateDate"]
+                filename = data["FileName"]
+                volume = filename.split('_')[2]
+                temp = volume.split('-')
+                if len(temp) == 2:
+                    if '.pdf' in temp[1]:
+                        volume = temp[0]
+                    else:
+                        volume = volume
+                publisher = "University of Chicago"
+                try:
+                    webstatement = data["WebStatement"]
+                except KeyError:
+                    webstatement = ""
+                row = [filename, creator, title, re.sub(r'\n', ' ', rights), webstatement, subject, keywords, createdate, publisher]
+                rows.append(row)
+            except JSONDecodeError:
+                pass
         with open(args.output_file, "w", encoding="utf-8") as csv_file:
-            csvfieldnames = ["title", "author", "creationDate", "subject", "keywords", "filePath"]
-            writer = csv.DictWriter(csv_file, fieldnames=csvfieldnames)
-            writer.writeheader()
-            for n_file in a_generator:
-                parsed = Parser(n_file, ['author', 'subject', 'keywords', 'title', 'creationDate'])
+            csvfieldnames = ["filename", "creator", "title", "rights", "webstatement", "subject", "keywords", "publisher",  "createdate"]
+            writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL, quotechar="\"")
+            writer.writerow(csvfieldnames)
+            for n_row in rows:
                 total_files += 1
-                info = parsed.get_metadata()
-                info["filePath"] = basename(n_file)
-                writer.writerow(info)
+                writer.writerow(n_row)
+        print(total_files)
         return 0
     except KeyboardInterrupt:
         return 131
