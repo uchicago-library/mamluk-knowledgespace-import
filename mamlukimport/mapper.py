@@ -5,7 +5,7 @@ from sys import stderr
 class Mapper(object):
     def __init__(self, input):
         self._in = input
-        self._lookup = {'title': {'element':'title', 'qualifier':none},
+        self._lookup = {'title': {'element':'title', 'qualifier':'none'},
                        'createdate': {'element': 'date', 'qualifier':'copyright'},
                        'creator': {'element':'contributor', 'qualifiier':'author'},
                        'rights': {'element': 'rights', 'qualifier': 'statement'},
@@ -13,8 +13,8 @@ class Mapper(object):
                        'subject': {'element': 'subject', 'qualifier': 'none'},
                        'keyword': {'element': 'subject', 'qualifier': 'keyword'},
                        'source': {'element': 'source', 'qualifier': 'none'},
-                       'isPartOf', {'element': 'relation', 'qualifier' :'isPartOf'},
-                       'isFormatOf', {'element': 'relation', 'qualifier': 'isPartOf'},
+                       'isPartOf': {'element': 'relation', 'qualifier' :'isPartOf'},
+                       'isFormatOf': {'element': 'relation', 'qualifier': 'isPartOf'},
                       }
         self.out = self._transform()
 
