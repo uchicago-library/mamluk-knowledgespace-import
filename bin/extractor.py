@@ -1,22 +1,21 @@
 
 
 from argparse import ArgumentParser
-from collections import namedtuple
 import re
-import csv
 import json
 from json.decoder import JSONDecodeError
-from os.path import basename, join
+from os.path import join
 from os import _exit, scandir
+from sys import stdout
 from xml.etree.ElementTree import tostring
 from xml.dom import minidom
 
-from mamlukimport.parser import Parser
-from mamlukimport.mapper import Mapper
+
+import mamlukimport.parser.Parser
+import mamlukimport.mapper.Mapper
 
 def read_directory(a_directory):
     items = scandir(a_directory)
-
     for n_item in items:
         if n_item.is_dir():
             yield from read_directory(n_item.path)
@@ -24,150 +23,119 @@ def read_directory(a_directory):
             if '.json' in n_item.path:
                 yield n_item.path
 
+def expand_list_of_terms(value_string):
+    item_count = 0
+    output = {}
+    for n_term in value_string.split(';'):
+        n_term = n_term.lstrip().strip()
+        val = None
+        if n_term != "":
+            val = n_term
+            item_count += 1
+        if val:
+            output[item_count] = n_term
+    return output
+
+def create_input(iterable, total_files, outputs):
+    for n_file in iterable:
+        try:
+            data = json.load(open(n_file, encoding='utf-8'))[0]
+            total_files += 1
+        except JSONDecodeError:
+            continue
+        output = {}
+        output["publisher"] = expand_list_of_terms("University of Chicago")
+        output["creator"] = expand_list_of_terms(data["Creator"])
+        output["rights"] = expand_list_of_terms(data["Rights"])
+        if not isinstance(data["Keywords"], list):
+            output["keywords"] = expand_list_of_terms(data["Keywords"])
+        else:
+            output["keywords"] = expand_list_of_terms(data["Keywords"][0])
+        if not isinstance(data["Subject"], list):
+            output["subject"] = expand_list_of_terms(data["Subjects"])
+        else:
+            output["subject"] = expand_list_of_terms(data["Subjects"][0])
+        output["createdate"] = expand_list_of_terms(data["CreateDate"])
+        output["filename"] = expand_list_of_terms(data["FileName"])
+        volume = data["FileName"].split('_')[2]
+        temp = volume.split('-')
+        if len(temp) >= 2:
+            head = [temp[0]]
+            tail = temp[1:]
+            tail = [x for x in tail if re.compile(r'\d{1,}$').match(x)]
+            output["copyrightdate"] = expand_list_of_terms(
+                '-'.join(head + tail))
+        else:
+            output["copyrightdate"] = expand_list_of_terms('-'.join([re.sub(r'[a-z]', '',
+                                                                            re.sub(r'\.', '', x))
+                                                                     for x in temp]))
+        msr_pattern = re.compile('MSR').search(data["Title"])
+        vol_pattern = re.compile('Vol.').search(data["Title"])
+        if msr_pattern:
+            volume = data["Title"][data["Title"][
+                1].index('MSR') + 3:].lstrip().strip()
+            title = {1: data["Title"][0:data["Title"].index('MSR')]}
+        elif vol_pattern:
+            volume = data["Title"][1][
+                data["Title"].index('Vol.') + 4:].lstrip().strip()
+            title = data["Title"][0:data["Title"].index('Vol.')]
+        else:
+            volume = "none"
+            title = expand_list_of_terms(title[1].lstrip().strip())
+        first_check = title[1][-1]
+        if first_check == '(':
+            title = title[0:-1].strip().lstrip()
+            second_check = title[-1]
+        if second_check == ":":
+            title = title[0:-1].strip().lstrip()
+        if volume:
+            volume = re.sub(r'\)', '', re.sub(r'\(', '', volume))
+            if 'MamlukStudiesReview' in data["FileName"]:
+                output["formatof"] = expand_list_of_terms(volume)
+            else:
+                output["part"] = expand_list_of_terms(volume)
+        output["title"] = expand_list_of_terms(title)
+        try:
+            output["webstatement"] = expand_list_of_terms(
+                data["WebStatement"])
+        except KeyError:
+            pass
+        outputs.append(output)
+    return outputs, total_files
+
+def create_output(inputs):
+   for n_record in inputs:
+       filename = n_record["filename"]
+       new_mapper = mamlukimport.mapper.Mapper(n_record)
+       new_filename = re.sub(r'.pdf', '.xml', filename[1])
+       xml_string = tostring(new_mapper.out)
+       xml_string = minidom.parseString(xml_string).toprettyxml()
+       yield (xml_string, new_filename)
+
 def main():
     try:
-        parser = ArgumentParser(description="Process a directory of PDFs for the metadata in each PDF")
-        parser.add_argument("pdf_directory", help="A directory that contains a bunch of PDF files.")
-        parser.add_argument("output_file", help="A file to write the results of the metadata extration")
+        parser = ArgumentParser(
+            description="Process a directory of PDFs for the metadata in each PDF")
+        parser.add_argument(
+            "pdf_directory",
+            help="A directory that contains a bunch of PDF files.")
+        parser.add_argument(
+            "output_directory",
+            help="A directory to write the results of the metadata extraction")
         args = parser.parse_args()
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
-        rows = []
-        outputs = []
-        for n in a_generator:
-            try:
-                data = json.load(open(n, encoding='utf-8'))[0]
-                publisher = {1: "University of Chicago"}
-                if not isinstance(data["Creator"], list):
-                    creator = {1: data["Creator"]}
-                else:
-                    crtr_count = 1
-                    creator_dict = {}
-                    for n_creator in data["Creator"]:
-                        creator_dict[crtr_count] = n_creator
-                        crtr_count += 1
-                    creator = creator_dict
-                title = {1: data["Title"]}
-                rights = {1: data["Rights"]}
+        inputs = []
+        inputs, total_files = create_input(a_generator, total_files, inputs)
+        stdout.write(
+            "There were {} files processed completely".format(total_files))
 
-                if not isinstance(data["Keywords"], list):
-                   kw_count = 1
-                   kw_dict = {}
-                   for n_keyw in data["Keywords"].split(';'):
-                        n_keyw = n_keyw.lstrip().strip()
-                        if n_keyw != "":
-                            kw_dict[kw_count] = n_keyw
-                            kw_count += 1
-                   keywords = kw_dict
-                else:
-                    kw_count = 1
-                    kw_dict = {}
-                    for n_keyw in data["Keywords"][0].split(';'):
-                        n_keyw = n_keyw.lstrip().strip()
-                        if n_keyw != "":
-                            kw_dict[kw_count] = n_keyw
-                            kw_count += 1
-                    keywords = kw_dict
+        input_generator = create_output(inputs)
+        for n_input in input_generator:
+            with open(join(args.output_directory,
+                           n_input[1]), "w", encoding="utf-8") as write_file:
+                write_file.write(n_input[0])
 
-                if not isinstance(data["Subject"], list):
-                    subj_count = 1
-                    subj_dict = {}
-                    for n_subj in data["Subject"].split(';'):
-                        n_subj = n_keyw.lstrip().strip()
-                        if n_subj != "":
-                            subj_dict[subj_count] = n_subj
-                            subj_count += 1
-                    subject = subj_dict
-
-                else:
-                    subj_count = 1
-                    subj_dict = {}
-                    for n_subj in data["Subject"][0].split(';'):
-                        n_subj = n_keyw.lstrip().strip()
-                        if n_subj != "":
-                            subj_dict[subj_count] = n_subj
-                            subj_count += 1
-                    subject = subj_dict
-
-                createdate = {1: data["CreateDate"]}
-                filename = {1: data["FileName"]}
-                volume = filename[1].split('_')[2]
-                temp = volume.split('-')
-
-                if len(temp) >= 2:
-                    head = [temp[0]]
-                    tail = temp[1:]
-                    tail = [x for x in tail if re.compile('\d{1,}$').match(x)]
-                    copyrightdate = head + tail
-                else:
-                    copyrightdate = [re.sub(r'[a-z]', '', re.sub(r'\.', '', x))
-                                     for x in temp]
-                copyrightdate = {1: '-'.join(copyrightdate)}
-
-                msr_pattern = re.compile('MSR').search(title[1])
-                vol_pattern = re.compile('Vol.').search(title[1])
-                volume_option = re.compile('(\(MSR .*\))').search(title[1])
-                volume_option2 = re.compile('(Vol. .*)').search(title[1])
-                if msr_pattern:
-                    volume = title[1][title[1].index('MSR')+3:].lstrip().strip()
-                    title = {1: title[1][0:title[1].index('MSR')]}
-                    print(title)
-                elif vol_pattern:
-                    volume = title[1][title[1].index('Vol.')+4:].lstrip().strip()
-                    title = {1: title[1][0:title[1].index('Vol.')]}
-                else:
-                    volume = "none"
-                title = {1: title[1].lstrip().strip()}
-
-                first_check = title[1][-1]
-                if first_check == '(':
-                    title[1] = title[1][0:-1].strip().lstrip()
-                second_check = title[1][-1]
-                if second_check == ":":
-                    title[1] = title[1][0:-1].strip().lstrip()
-                try:
-                    webstatement = data["WebStatement"]
-                except KeyError:
-                    webstatement = ""
-                webstatement = {1: webstatement}
-                str_filen = filename[1]
-                output = {'creator': creator,
-                          'title': title,
-                          'rights': rights,
-                          'keyword': keywords,
-                          'subject': subject,
-                          'createdate': copyrightdate,
-                          'filename': filename,
-                          'webstatement': webstatement,
-                          'publisher': publisher,
-                         }
-                if volume:
-                    volume = re.sub(r'\)', '', re.sub(r'\(', '', volume))
-                    volume = {1: volume}
-                    if 'MamlukStudiesReview' in filename[1]:
-                        output["formatof"] = volume
-                    else:
-                        output["part"] = volume
-                outputs.append(output)
-            except JSONDecodeError:
-                pass
-        # with open(args.output_file, "w", encoding="utf-8") as csv_file:
-        #     csvfieldnames = ["filename", "creator", "title", "rights", "webstatement", "subject", "keywords", "publisher",  "createdate"]
-        #     writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL, quotechar="\"")
-        #     writer.writerow(csvfieldnames)
-        #     for n_row in rows:
-        #         total_files += 1
-        #         writer.writerow(n_row)
-        for n_record in outputs:
-            filename = n_record["filename"]
-            del n_record["filename"]
-            new_mapper = Mapper(n_record)
-
-            new_filename = re.sub(r'.pdf', '.xml', filename[1])
-            xml_string = tostring(new_mapper.out)
-            xml_string = minidom.parseString(xml_string).toprettyxml()
-            with open(join('./out', new_filename), "w", encoding="utf-8") as write_file:
-                write_file.write(xml_string)
         return 0
     except KeyboardInterrupt:
         return 131
