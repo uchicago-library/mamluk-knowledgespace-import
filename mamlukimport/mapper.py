@@ -6,7 +6,7 @@ class Mapper(object):
     def __init__(self, input):
         self._in = input
         self._lookup = {'title': {'element':'title', 'qualifier':'none'},
-                       'createdate': {'element': 'date', 'qualifier':'copyright'},
+                       'copyright': {'element': 'date', 'qualifier':'copyright'},
                        'creator': {'element':'contributor', 'qualifier':'author'},
                        'rights': {'element': 'rights', 'qualifier': 'statement'},
                        'webstatement': {'element': 'rights', 'qualifier': 'url'},
@@ -32,6 +32,8 @@ class Mapper(object):
                     new_element = SubElement(root, "dc_value")
                     new_element.set("element", instructions["element"])
                     new_element.set("qualifier", instructions["qualifier"])
+                    if n_value == 'subject':
+                        print(new_element)
                     if isinstance(self._in[n_key], str):
                         new_element.text = self._in[n_key]
                     else:

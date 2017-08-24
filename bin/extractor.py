@@ -24,7 +24,13 @@ def read_directory(a_directory):
 def expand_list_of_terms(value_string):
     item_count = 0
     output = {}
-    for n_term in value_string.split(';'):
+    if ';' in value_string:
+        a_list = value_string.split(';')
+    elif isinstance(value_string, list):
+        a_list = value_string
+    else:
+        a_list = [value_string]
+    for n_term in a_list:
         n_term = n_term.lstrip().strip()
         val = None
         if n_term != "":
@@ -34,6 +40,60 @@ def expand_list_of_terms(value_string):
             output[item_count] = n_term
     return output
 
+def _return_generic_string(a_string):
+    return expand_list_of_terms("University of Chicago")
+
+def _force_convert_to_list(a_string):
+    return expand_list_of_terms([a_string])
+
+def _extract_list_of_terms(some_original_input):
+    return some_original_input
+
+def _extract_copyright(rights_statement):
+    test = rights_statement.split(' ')[0].encode('utf-8')
+    test = test.split(b'\xc2\xa9')
+    if len(test) == 2:
+        return expand_list_of_terms(test[1].decode('utf-8'))
+    else:
+        return _return_generic_string("no copyright")
+
+def _extract_volume_information(some_original_input):
+    msr_pattern = re.compile('MSR').search(some_original_input)
+    vol_pattern = re.compile('Vol.').search(some_original_input)
+    print(some_original_input)
+
+    # if msr_pattern:
+    #     volume = data["Title"][data["Title"][0:]
+    #     .index('MSR') + 3:].lstrip().strip()
+    #        title = data["Title"][0:data["Title"].index('MSR')]
+    #     elif vol_pattern:
+    #         volume = data["Title"][1][data["Title"].index('Vol.') + 4:].lstrip().strip()
+    #         title = data["Title"][0:data["Title"].index('Vol.')]
+    #     else:
+    #         volume = "none"
+    #         title = title.lstrip().strip()
+    #     first_check = title[-1]
+    #     if first_check == '(':
+    #         title = title[0:-1].strip().lstrip()
+    #     second_check = title[-1]
+    #     if second_check == ":":
+    #         title = title[0:-1].strip().lstrip()
+    #     if volume:
+    #         volume = re.sub(r'\)', '', re.sub(r'\(', '', volume))
+    #         if 'MamlukStudiesReview' in data["FileName"]:
+    #             output["formatof"] = expand_list_of_terms(volume)
+    #             output["source"] = expand_list_of_terms("printed " + volume)
+    #         else:
+    #             output["part"] = expand_list_of_terms(volume)
+    #             output["source"] = expand_list_of_terms(volume)
+
+def _check_for_webstatement(some_dict):
+    if some_dict.get("WebStatement", None):
+        output = some_dict.get("WebStatement")
+    else:
+        output = "http://mamluk.uchicago.edu/msr.html"
+    return _return_generic_string(output)
+
 def create_input(iterable, total_files, outputs):
     for n_file in iterable:
         try:
@@ -42,62 +102,16 @@ def create_input(iterable, total_files, outputs):
         except JSONDecodeError:
             continue
         output = {}
-        output["publisher"] = expand_list_of_terms("University of Chicago")
-        output["creator"] = expand_list_of_terms(data["Creator"])
-        output["rights"] = expand_list_of_terms(data["Rights"])
-        if not isinstance(data["Keywords"], list):
-            output["keywords"] = expand_list_of_terms(data["Keywords"])
-        else:
-            output["keywords"] = expand_list_of_terms(data["Keywords"][0])
-        if not isinstance(data["Subject"], list):
-            output["subject"] = expand_list_of_terms(data["Subjects"])
-        else:
-            output["subject"] = expand_list_of_terms(data["Subjects"][0])
-        output["createdate"] = expand_list_of_terms(data["CreateDate"])
-        output["filename"] = expand_list_of_terms(data["FileName"])
-        volume = data["FileName"].split('_')[2]
-        temp = volume.split('-')
-        if len(temp) >= 2:
-            head = [temp[0]]
-            tail = temp[1:]
-            tail = [x for x in tail if re.compile(r'\d{1,}$').match(x)]
-            output["copyrightdate"] = expand_list_of_terms(
-                '-'.join(head + tail))
-        else:
-            output["copyrightdate"] = expand_list_of_terms('-'.join([re.sub(r'[a-z]', '',
-                                                                            re.sub(r'\.', '', x))
-                                                                     for x in temp]))
-        msr_pattern = re.compile('MSR').search(data["Title"])
-        vol_pattern = re.compile('Vol.').search(data["Title"])
-        if msr_pattern:
-            volume = data["Title"][data["Title"][
-                1].index('MSR') + 3:].lstrip().strip()
-            title = {1: data["Title"][0:data["Title"].index('MSR')]}
-        elif vol_pattern:
-            volume = data["Title"][1][
-                data["Title"].index('Vol.') + 4:].lstrip().strip()
-            title = data["Title"][0:data["Title"].index('Vol.')]
-        else:
-            volume = "none"
-            title = expand_list_of_terms(title[1].lstrip().strip())
-        first_check = title[1][-1]
-        if first_check == '(':
-            title = title[0:-1].strip().lstrip()
-            second_check = title[-1]
-        if second_check == ":":
-            title = title[0:-1].strip().lstrip()
-        if volume:
-            volume = re.sub(r'\)', '', re.sub(r'\(', '', volume))
-            if 'MamlukStudiesReview' in data["FileName"]:
-                output["formatof"] = expand_list_of_terms(volume)
-            else:
-                output["part"] = expand_list_of_terms(volume)
-        output["title"] = expand_list_of_terms(title)
-        try:
-            output["webstatement"] = expand_list_of_terms(
-                data["WebStatement"])
-        except KeyError:
-            pass
+        output["publisher"] = _return_generic_string("University of Chicago")
+        output["creator"] = _return_generic_string(data["Creator"])
+        output["rights"] = _force_convert_to_list(data["Rights"])
+        output["copyright"] = _extract_copyright(data["Rights"])
+        output["keywords"] = _extract_list_of_terms(data["Keywords"])
+        output["subjects"] = _extract_list_of_terms(data["Subject"])
+        output["filename"] = _return_generic_string(data["FileName"])
+        output["volumme"] = _extract_volume_information(data["Title"])
+        output["title"] = _return_generic_string(data["Title"])
+        output["webstatement"] = _check_for_webstatement(data)
         outputs.append(output)
     return outputs, total_files
 
@@ -120,6 +134,7 @@ def main():
         parser.add_argument(
             "output_directory",
             help="A directory to write the results of the metadata extraction")
+
         args = parser.parse_args()
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
