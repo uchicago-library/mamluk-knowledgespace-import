@@ -8,5 +8,6 @@ setup(name='mamlukimport',
       author_email='tdanstrom@uchicago.edu',
       url='https://github.com/uchicago-library/mamluk-knowledgespace-import/',
       packages=['mamlukimport'],
-      install_requires=['python-magic', 'PyPDF2']
+      scripts=['bin/build_safs.py', 'bin/extractor.py'],
+      install_requires=['python-magic', 'PyPDF2', 'pylint']
      )

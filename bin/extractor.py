@@ -10,9 +10,7 @@ from sys import stdout
 from xml.etree.ElementTree import tostring
 from xml.dom import minidom
 
-
-import mamlukimport.parser.Parser
-import mamlukimport.mapper.Mapper
+from mamlukimport.mapper import Mapper
 
 def read_directory(a_directory):
     items = scandir(a_directory)
@@ -106,7 +104,7 @@ def create_input(iterable, total_files, outputs):
 def create_output(inputs):
    for n_record in inputs:
        filename = n_record["filename"]
-       new_mapper = mamlukimport.mapper.Mapper(n_record)
+       new_mapper = Mapper(n_record)
        new_filename = re.sub(r'.pdf', '.xml', filename[1])
        xml_string = tostring(new_mapper.out)
        xml_string = minidom.parseString(xml_string).toprettyxml()

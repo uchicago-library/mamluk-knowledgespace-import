@@ -8,3 +8,5 @@ dist/*
 *.txt
 *.csv
 .vscode*
+pdfs*
+SimpleArchiveFormat*

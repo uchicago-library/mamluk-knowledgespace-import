@@ -1,7 +1,6 @@
 
 from os.path import exists
 from os import _exit, scandir
-from magic import Magic
 from PyPDF2 import PdfFileReader
 import re
 
