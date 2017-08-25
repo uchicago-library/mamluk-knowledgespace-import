@@ -6,7 +6,7 @@ import json
 from json.decoder import JSONDecodeError
 from os.path import join
 from os import _exit, scandir
-from sys import stdout
+from sys import stdout, stderr
 from xml.etree.ElementTree import tostring
 from xml.dom import minidom
 
@@ -60,7 +60,54 @@ def _extract_copyright(rights_statement):
 def _extract_volume_information(some_original_input):
     msr_pattern = re.compile('MSR').search(some_original_input)
     vol_pattern = re.compile('Vol.').search(some_original_input)
-    print(some_original_input)
+    output = re.sub('\)', '', re.sub('\(', '', some_original_input))
+
+    exception_volumes = {
+        "Mamluk Studies Review XVI (2012)": {"volume":"XVI (2012)"},
+        "Mamluk Studies Review XV (2011)": {"volume": "XVI (2011)"},
+    }
+
+    exceptions = [
+       "Ibn Tulun (d. 955/1548): Life and Works",
+        "The Four Madrasahs in the Complex of Sultan Hasan (1356-61): The Complete Survey",
+        "The al-Nashw Episode: A Case Study of \"Moral Economy\"",
+        "Notes on the Contemporary Sources of the Year 793",
+        "The Publications of Donald P. Little",
+        "Ibn Tulun d. 955/1548: Life and Works",
+        "Ceramic Evidence for Political Transformations in Early Mamluk Egypt",
+        "Some Remarks on Ibn Tawq's Journal Al-Ta'liq, vol. 1",
+        "The Four Madrasahs in the Complex of Sultan Hasan 1356-61: The Complete Survey",
+        "Women and Gender in Mamluk Society: An Overview",
+        "Idealism and Intransigence: A Christian-Muslim Encounter in Early Mamluk Times",
+        "Editorial: Open Access and Copyright",
+        "In Memoriam: David C. Reisman June 21, 1969-January 2, 2011",
+    ]
+    if (some_original_input in exceptions) or ((not 'MSR' in some_original_input) and (not 'Vol.' in some_original_input)):
+        # stderr.write("could not determine volume information from title {}\n".format(some_original_input))
+        if some_original_input not in exceptions and  exception_volumes.keys():
+            stderr.write("{} is not accounted for\n".format(some_original_input))
+    else:
+        if 'MSR' in some_original_input:
+            title, volume_info = output.split('MSR')
+        elif 'Vol.' in some_original_input:
+            title, volume_info = output.split('Vol.')
+        return (title.lstrip().strip(), volume_info.lstrip().strip())
+
+"""
+exceptions:
+
+The al-Nashw Episode: A Case Study of "Moral Economy"
+Notes on the Contemporary Sources of the Year 793
+The Publications of Donald P. Little
+Ibn Tulun d. 955/1548: Life and Works
+Ceramic Evidence for Political Transformations in Early Mamluk Egypt
+Some Remarks on Ibn Tawq's Journal Al-Ta'liq, vol. 1
+The Four Madrasahs in the Complex of Sultan Hasan 1356-61: The Complete Survey
+Women and Gender in Mamluk Society: An Overview
+Idealism and Intransigence: A Christian-Muslim Encounter in Early Mamluk Times
+Editorial: Open Access and Copyright
+In Memoriam: David C. Reisman June 21, 1969-January 2, 2011
+"""
 
     # if msr_pattern:
     #     volume = data["Title"][data["Title"][0:]

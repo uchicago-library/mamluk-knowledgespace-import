@@ -6,6 +6,7 @@ import csv
 from os import _exit, makedirs, path
 import re
 from xml.etree import ElementTree
+from xml.dom import minidom
 from sys import stderr
 
 from shutil import copyfile
@@ -68,13 +69,13 @@ def _define_element_attribute(an_element, element_name):
     return _define_attribute_value(an_element, "element", element_name)
 
 def _map_to_saf_dublincore(record):
-    title = record["title"].encode("utf-8")
+    title = record["title"]
     creator = record["creator"]
     publisher = record["creator"]
-    description = record["description"].encode('utf-8')
+    description = record["description"]
     copyrightdate = record["date.copyright"]
     issn = record["identifier.issn"]
-    rights = record["rights"].encode("utf-8")
+    rights = record["rights"]
     subjects = [x.strip().lower() for x in re.split(';|,', record["subject"])]
     keywords = [x.strip().lower() for x in re.split(';|,', record["keywords"]) if not re.compile('^\s{1}Middle|East').search(x)]
     keywords.append('middle east')
@@ -99,17 +100,23 @@ def _generate_safs(metadata_file, input_dir):
     csv_data = _open_csv(metadata_file)
     for record in csv_data:
         filename = record["filename"]
-        del record["filename"]
     counter = 0
     for r in csv_data:
         counter += 1
         item_path = path.join('./SimpleArchiveFormat', 'item_' + str(counter).zfill(3))
         makedirs(item_path)
         dc_path = path.join(item_path, 'dublin_core.xml')
-        print(dc_path)
+
         new_metadata = _map_to_saf_dublincore(r)
-        tree = ElementTree.ElementTree(new_metadata)
-        tree.write(dc_path, encoding="utf-8", xml_declaration=True)
+
+        xml_string = ElementTree.tostring(new_metadata)
+        xml_string = minidom.parseString(xml_string).toprettyxml()
+        with open(dc_path, "w", encoding="utf-8") as write_file:
+            write_file.write(xml_string)
+        contents_path = path.join(item_path, 'contents')
+        copyfile(path.join("./pdfs", r["filename"]), path.join(item_path, r["filename"]))
+        with open(contents_path, "w", encoding="utf-8") as write_file:
+            write_file.write(r["filename"])
 
 def _main():
     parser = ArgumentParser(description="A cli module to process Mamluk files into SAFs")
