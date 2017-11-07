@@ -141,26 +141,33 @@ def _check_for_webstatement(some_dict):
         output = "http://mamluk.uchicago.edu/msr.html"
     return _return_generic_string(output)
 
-def create_input(iterable, total_files, outputs):
-    for n_file in iterable:
-        try:
-            data = json.load(open(n_file, encoding='utf-8'))[0]
-            total_files += 1
-        except JSONDecodeError:
-            continue
-        output = {}
-        output["publisher"] = _return_generic_string("University of Chicago")
-        output["creator"] = _return_generic_string(data["Creator"])
-        output["rights"] = _force_convert_to_list(data["Rights"])
-        output["copyright"] = _extract_copyright(data["Rights"])
-        output["keywords"] = _extract_list_of_terms(data["Keywords"])
-        output["subjects"] = _extract_list_of_terms(data["Subject"])
-        output["filename"] = _return_generic_string(data["FileName"])
-        output["volumme"] = _extract_volume_information(data["Title"])
-        output["title"] = _return_generic_string(data["Title"])
-        output["webstatement"] = _check_for_webstatement(data)
-        outputs.append(output)
-    return outputs, total_files
+def create_input(n_file, total_files):
+    try:
+        data = json.load(open(n_file, encoding='utf-8'))[0]
+        total_files += 1
+    except JSONDecodeError:
+        raise ValueError("couldn't load a json file")
+    creator = data["Creator"]
+    publisher = "University of Chicago"
+    rights = data["Rights"]
+    copyright= data["Rights"]
+    keywords = data["Keywords"]
+    subjects = data["Subject"]
+    filename = data["FileName"]
+    title = data["Title"]
+    volume = _extract_volume_information(data["Title"])[1]
+
+    output = {}
+    output["publisher"] = publisher
+    output["creator"] = creator
+    output["rights"] = rights
+    output["copyright"] = rights
+    output["keywords"] = keywords
+    output["subjects"] = subjects
+    output["filename"] = filename
+    output["volume"] = volume
+    output["title"] = title
+    return output
 
 def create_output(inputs):
    for n_record in inputs:
@@ -186,10 +193,12 @@ def main():
         a_generator = read_directory(args.pdf_directory)
         total_files = 0
         inputs = []
-        inputs, total_files = create_input(a_generator, total_files, inputs)
+        for n in a_generator:
+            i = create_input(n, total_files)
+            total_files += 1
+            inputs.append(i)
         stdout.write(
             "There were {} files processed completely".format(total_files))
-
         input_generator = create_output(inputs)
         for n_input in input_generator:
             with open(join(args.output_directory,

@@ -28,7 +28,11 @@ class Mapper(object):
                 instructions = None
                 stderr.write("{} is an invalid field for this mapping.\n".format(n_key))
             if instructions:
+                if type(self._in[n_key]) == list:
+                    print(str(self._in[n_key]).encode("utf-8"))
+                """
                 for n_value in self._in[n_key]:
+                    print(n_value.encode("utf-8"))
                     new_element = SubElement(root, "dc_value")
                     new_element.set("element", instructions["element"])
                     new_element.set("qualifier", instructions["qualifier"])
@@ -38,6 +42,7 @@ class Mapper(object):
                         new_element.text = self._in[n_key]
                     else:
                         new_element.text = str(self._in[n_key][n_value])
+                """
         return root
 
     def get_output(self):
